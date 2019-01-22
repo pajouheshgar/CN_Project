@@ -180,6 +180,10 @@
 from struct import *
 
 
+def bytes2str(b):
+    return str(b)[2:-1]
+
+
 class Packet:
     def __init__(self, buf):
         """
@@ -204,7 +208,7 @@ class Packet:
         :return: Packet header
         :rtype: str
         """
-        return self.header
+        return bytes2str(self.header)
         pass
 
     def get_version(self):
@@ -213,7 +217,8 @@ class Packet:
         :return: Packet Version
         :rtype: int
         """
-        return int(self.version)
+        (version,) = unpack("!H", self.version)
+        return version
         pass
 
     def get_type(self):
@@ -222,7 +227,8 @@ class Packet:
         :return: Packet type
         :rtype: int
         """
-        return int(self.type)
+        (type_,) = unpack("!H", self.type)
+        return type_
         pass
 
     def get_length(self):
@@ -231,7 +237,8 @@ class Packet:
         :return: Packet length
         :rtype: int
         """
-        return int(self.length)
+        (length,) = unpack("!I", self.length)
+        return length
         pass
 
     def get_body(self):
@@ -240,7 +247,7 @@ class Packet:
         :return: Packet body
         :rtype: str
         """
-        return self.body
+        return bytes2str(self.body)
         pass
 
     def get_buf(self):
@@ -250,7 +257,7 @@ class Packet:
         :return The parsed packet to the network format.
         :rtype: bytearray
         """
-
+        return self.buf
         pass
 
     def get_source_server_ip(self):
@@ -259,6 +266,8 @@ class Packet:
         :return: Server IP address for the sender of the packet.
         :rtype: str
         """
+        a, b, c, d = unpack("!HHHH", self.server_ip)
+        return "{:03d}.{:03d}.{:03d}.{:03d}".format(a, b, c, d)
 
         pass
 
@@ -268,6 +277,8 @@ class Packet:
         :return: Server Port address for the sender of the packet.
         :rtype: str
         """
+        (server_port, ) = unpack("!I", self.server_port)
+        return "{:05d}".format(int(server_port))
         pass
 
     def get_source_server_address(self):
@@ -276,6 +287,7 @@ class Packet:
         :return: Server address; The format is like ('192.168.001.001', '05335').
         :rtype: tuple
         """
+        return self.get_source_server_ip(), self.get_source_server_port()
         pass
 
 
@@ -295,6 +307,7 @@ class PacketFactory:
         :rtype: Packet
 
         """
+        return Packet(buffer)
         pass
 
     @staticmethod
@@ -311,6 +324,22 @@ class PacketFactory:
         :return New reunion packet.
         :rtype Packet
         """
+        n_address = len(nodes_array)
+        number_of_entries = "{:02d}".format(n_address)
+        addreses = ""
+        for ip, port in nodes_array:
+            addreses += ip
+            addreses += port
+
+        body_str = type + number_of_entries + addreses
+        length = 3 + 2 + n_address * 20
+        body_bytes = pack("!{}s".format(length), bytes(body_str, 'utf-8'))
+        source_port = int(source_address[1])
+        a, b, c, d = int(source_address[0][:3]), int(source_address[0][4:7]), int(source_address[0][8:11]), int(
+            source_address[0][12:15])
+        buff = pack("!HHI4HI{}s".format(length), 1, 5, length, a, b, c, d, source_port, body_bytes)
+        # return buff
+        return Packet(buff)
         pass
 
     @staticmethod
@@ -375,3 +404,16 @@ class PacketFactory:
         :rtype: Packet
         """
         pass
+
+
+if __name__ == "__main__":
+    P = PacketFactory.new_reunion_packet("REQ", ("127.000.000.001", "05356"), [("127.000.000.001", "31315")])
+
+    print(P.get_source_server_port())
+    print(P.get_source_server_ip())
+    print(P.get_type())
+    print(P.get_header())
+    print(P.get_body())
+    print(P.get_length())
+    print(P.get_source_server_address())
+    print(P.get_version())
