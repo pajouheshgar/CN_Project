@@ -277,7 +277,7 @@ class Packet:
         :return: Server Port address for the sender of the packet.
         :rtype: str
         """
-        (server_port, ) = unpack("!I", self.server_port)
+        (server_port,) = unpack("!I", self.server_port)
         return "{:05d}".format(int(server_port))
         pass
 
@@ -324,12 +324,20 @@ class PacketFactory:
         :return New reunion packet.
         :rtype Packet
         """
+        type = type.upper()
+        assert type in ["REQ", "RES"]
+
         n_address = len(nodes_array)
         number_of_entries = "{:02d}".format(n_address)
         addreses = ""
-        for ip, port in nodes_array:
-            addreses += ip
-            addreses += port
+        if type == "REQ":
+            for ip, port in nodes_array:
+                addreses += ip
+                addreses += port
+        else:
+            for ip, port in nodes_array[::-1]:
+                addreses += ip
+                addreses += port
 
         body_str = type + number_of_entries + addreses
         length = 3 + 2 + n_address * 20
@@ -343,7 +351,7 @@ class PacketFactory:
         pass
 
     @staticmethod
-    def new_advertise_packet(type, source_server_address, neighbour=None):
+    def new_advertise_packet(type, source_server_address, neighbour=(None, None)):
         """
         :param type: Type of Advertise packet
         :param source_server_address Server address of the packet sender.
@@ -357,6 +365,20 @@ class PacketFactory:
         :rtype Packet
 
         """
+        a, b, c, d = int(source_server_address[0][:3]), int(source_server_address[0][4:7]), int(
+            source_server_address[0][8:11]), int(
+            source_server_address[0][12:15])
+        source_port = int(source_server_address[1])
+        type = type.upper()
+        assert type in ["REQ", "RES"]
+        if type == "RES":
+            body_str = "RES" + neighbour[0] + neighbour[1]
+        else:
+            body_str = "REQ"
+
+        length = len(body_str)
+        buff = pack("!HHI4HI{}s".format(length), 1, 2, length, a, b, c, d, source_port, bytes(body_str, 'utf-8'))
+        return Packet(buff)
         pass
 
     @staticmethod
@@ -370,7 +392,14 @@ class PacketFactory:
         :rtype Packet
 
         """
-        pass
+        a, b, c, d = int(source_server_address[0][:3]), int(source_server_address[0][4:7]), int(
+            source_server_address[0][8:11]), int(
+            source_server_address[0][12:15])
+        source_port = int(source_server_address[1])
+        body_str = "JOIN"
+        length = len(body_str)
+        buff = pack("!HHI4HI{}s".format(length), 1, 2, length, a, b, c, d, source_port, bytes(body_str, 'utf-8'))
+        return Packet(buff)
 
     @staticmethod
     def new_register_packet(type, source_server_address, address=(None, None)):
@@ -387,7 +416,20 @@ class PacketFactory:
         :rtype Packet
 
         """
-        pass
+        a, b, c, d = int(source_server_address[0][:3]), int(source_server_address[0][4:7]), int(
+            source_server_address[0][8:11]), int(
+            source_server_address[0][12:15])
+        source_port = int(source_server_address[1])
+
+        assert type in ["REQ", "RES"]
+        if type == "REQ":
+            body_str = "REQ" + address[0] + address[1]
+        else:
+            body_str = "RESACK"
+
+        length = len(body_str)
+        buff = pack("!HHI4HI{}s".format(length), 1, 1, length, a, b, c, d, source_port, bytes(body_str, 'utf-8'))
+        return Packet(buff)
 
     @staticmethod
     def new_message_packet(message, source_server_address):
@@ -403,16 +445,28 @@ class PacketFactory:
         :return: New Message packet.
         :rtype: Packet
         """
+        length = len(message)
+        source_port = int(source_server_address[1])
+        a, b, c, d = int(source_server_address[0][:3]), int(source_server_address[0][4:7]), int(
+            source_server_address[0][8:11]), int(
+            source_server_address[0][12:15])
+        buff = pack("!HHI4HI{}s".format(length), 1, 4, length, a, b, c, d, source_port, bytes(message, 'utf-8'))
+        return Packet(buff)
         pass
 
 
 if __name__ == "__main__":
-    P = PacketFactory.new_reunion_packet("REQ", ("127.000.000.001", "05356"), [("127.000.000.001", "31315")])
+    P = PacketFactory.new_reunion_packet("REQ", ("127.000.000.001", "05356"),
+                                         [("127.000.000.001", "31315"), ("127.000.000.001", "31318")])
+    P = PacketFactory.new_message_packet("HelloGoodbye", ("127.000.000.001", "05356"))
+    P = PacketFactory.new_register_packet("REQ", ("127.000.000.001", "31315"), ("127.000.000.001", "05356"))
+    P = PacketFactory.new_advertise_packet("RES", ("127.000.000.001", "31315"), ("127.000.000.001", "05356"))
+    P = PacketFactory.new_join_packet(("127.000.000.001", "31315"))
 
     print(P.get_source_server_port())
     print(P.get_source_server_ip())
     print(P.get_type())
-    print(P.get_header())
+    print("Header:", P.get_header())
     print(P.get_body())
     print(P.get_length())
     print(P.get_source_server_address())
