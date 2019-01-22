@@ -35,3 +35,14 @@ class TCPServer:
     @property
     def port(self):
         return self.server_socket.port
+
+
+def callback(ip, q, data):
+    print("{} received from {}".format(data, ip))
+    q.put("SUCK")
+    q.put("BITCH")
+
+
+if __name__ == "__main__":
+    server = TCPServer(mode='localhost', port=8765, read_callback=callback)
+    server.run()

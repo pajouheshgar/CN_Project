@@ -188,6 +188,14 @@ class Packet:
         :param buf: Input buffer was just decoded.
         :type buf: bytearray
         """
+        self.buf = buf
+        self.header = buf[:8 + 8 + 4]
+        self.body = buf[8 + 8 + 4:]
+        self.version = self.header[:2]
+        self.type = self.header[2:4]
+        self.length = self.header[4:8]
+        self.server_ip = self.header[8:16]
+        self.server_port = self.header[16:20]
         pass
 
     def get_header(self):
@@ -196,6 +204,7 @@ class Packet:
         :return: Packet header
         :rtype: str
         """
+        return self.header
         pass
 
     def get_version(self):
@@ -204,6 +213,7 @@ class Packet:
         :return: Packet Version
         :rtype: int
         """
+        return int(self.version)
         pass
 
     def get_type(self):
@@ -212,6 +222,7 @@ class Packet:
         :return: Packet type
         :rtype: int
         """
+        return int(self.type)
         pass
 
     def get_length(self):
@@ -220,6 +231,7 @@ class Packet:
         :return: Packet length
         :rtype: int
         """
+        return int(self.length)
         pass
 
     def get_body(self):
@@ -228,6 +240,7 @@ class Packet:
         :return: Packet body
         :rtype: str
         """
+        return self.body
         pass
 
     def get_buf(self):
@@ -237,6 +250,7 @@ class Packet:
         :return The parsed packet to the network format.
         :rtype: bytearray
         """
+
         pass
 
     def get_source_server_ip(self):
@@ -245,6 +259,7 @@ class Packet:
         :return: Server IP address for the sender of the packet.
         :rtype: str
         """
+
         pass
 
     def get_source_server_port(self):

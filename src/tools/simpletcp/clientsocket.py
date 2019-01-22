@@ -103,3 +103,18 @@ class ClientSocket:
         if not self.closed:
             self._socket.close()
             self.closed = True
+
+
+if __name__ == "__main__":
+    import time
+
+    client = ClientSocket(mode='localhost', port=8765, single_use=False)
+    response = client.send("FUCK OFF")
+    print(response)
+    response = client.send("FUCK OFF2")
+    print(response)
+    response = client.send("FUCK OFF3")
+    print(response)
+    # response = client.send("FUCK OFF4")
+    # print(response)
+    client.close()
