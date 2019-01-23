@@ -1,6 +1,26 @@
+from graphics import *
 import graphics as gf
+import time
 from tkinter import *
 from tkinter import ttk
+
+
+class MyGraphWin(gf.GraphWin):
+    def getMouse(self):
+        """Wait for mouse click and return Point object representing
+        the click"""
+        self.mouseX = None
+        self.mouseY = None
+        while self.mouseX == None or self.mouseY == None:
+            self.update()
+            #_tkCall(self.update)
+            if self.isClosed():
+                return 0
+            time.sleep(.1)  # give up thread
+        x, y = self.toWorld(self.mouseX, self.mouseY)
+        self.mouseX = None
+        self.mouseY = None
+        return gf.Point(x, y)
 
 
 CIRCLE_R = 15
@@ -107,18 +127,21 @@ def show_network():
     win.setBackground('black')
     tree.show(win)
     while True:
-        clicked_point = win.getMouse()
-        if clicked_point is None:
-            pass
-        else:
-            for node in tree.nodes:
-                if node.is_inside(clicked_point):
-                    print(node.name)
-                    node.show(win, color="grey")
-                    new_window = gf.GraphWin("SAG", 100, 100)
-                    new_window.getMouse()
-                    new_window.close()
-                    node.show(win, color="white")
+        try:
+            clicked_point = win.getMouse()
+            if clicked_point is None:
+                pass
+            else:
+                for node in tree.nodes:
+                    if node.is_inside(clicked_point):
+                        print(node.name)
+                        node.show(win, color="grey")
+                        new_window = MyGraphWin("SAG", 100, 100)
+                        new_window.getMouse()
+                        new_window.close()
+                        node.show(win, color="white")
+        except gf.GraphicsError:
+            break
 
     """cir = gf.Circle(gf.Point(50, 50), 20)
     cir.setFill("white")
@@ -127,7 +150,6 @@ def show_network():
     message.setTextColor('red')
     message.setSize(15)
     message.draw(win)"""
-    win.getMouse()
     win.close()
 
 
