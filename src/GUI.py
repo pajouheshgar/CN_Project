@@ -235,10 +235,10 @@ def build_root_tree(root_node):
 
 
 def show_network():
-    win = gf.GraphWin("main", 700, 500)
-    win.setBackground('black')
     exit = False
     while exit is False:
+        win = gf.GraphWin("main", 700, 500)
+        win.setBackground('black')
         refresh = RefreshButton()
         refresh.show(win)
         if root is not None:
@@ -249,7 +249,11 @@ def show_network():
             tree_nodes = []
         i = 0
         for address in nodes:
-            if nodes[address] not in tree_nodes:
+            is_in_tree = False
+            for node in tree_nodes:
+                if address == node.address:
+                    is_in_tree = True
+            if not is_in_tree:
                 nodes[address].show(win, gf.Point(3*(i+1)*CIRCLE_R, win.height - (CIRCLE_R + 10)))
                 i += 1
         refreshed = False
@@ -260,7 +264,7 @@ def show_network():
                     pass
                 elif refresh.is_inside(clicked_point):
                     refresh.show(win, "grey")
-                    time.sleep(0.1)
+                    win.close()
                     refreshed = True
                 else:
                     for address in nodes:
