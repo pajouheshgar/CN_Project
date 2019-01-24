@@ -1,8 +1,18 @@
 from graphics import *
+from src.Peer import Peer
 import graphics as gf
 import time
 from tkinter import *
-from tkinter import ttk
+from tkinter import ttk, messagebox
+import threading
+from src.UserInterface import UserInterface
+
+
+def exit_program():
+    window.destroy()
+    window.quit()
+    os._exit(10)
+    return
 
 
 class MyGraphWin(gf.GraphWin):
@@ -23,15 +33,61 @@ class MyGraphWin(gf.GraphWin):
         return gf.Point(x, y)
 
 
+"""  
+azed variables: 
+    Peer.network_graph 
+    right_child, left_child
+    root_address=("127.0.0.1", 10000)    
+"""  #  COPS FROM AZED
+
+
 CIRCLE_R = 15
+root = None
 
 
 class GNode:
-    def __init__(self, peer, name=""):
-        self.peer = peer
+    def __init__(self, address=None, name="", is_root=False):
+        self.port = None
+        self.address = None
+        if address is None:
+            self.peer = None
+        else:
+            if is_root:
+                if root is not None:
+                    print("Root Already Exists")
+                    return
+                self.create_server()
+            else:
+                self.port = int(address[1])
+                self.create_client()
+
+        #self.address = (str(address[0]), str(address[1]))
         self.name = name
         self.neighbors = []
         self.location = None
+
+    def create_server(self):
+        self.peer = Peer("127.0.0.1", 10000, is_root=True)
+        self.port = self.peer.server_port
+        self.address = (self.peer.server_ip, self.peer.server_port)
+        print("SERVER ADDED")
+        thread = threading.Thread(target=self.peer.run)
+        thread.start()
+
+    def create_client(self):
+        self.peer = Peer("127.0.0.1", self.port, is_root=False, root_address=("127.0.0.1", 10000))
+        self.port = self.peer.server_port
+        self.address = (self.peer.server_ip, self.peer.server_port)
+        print("CLIENT ADDED")
+        thread = threading.Thread(target=self.peer.run)
+        thread.start()
+
+    def connect_to(self, g_node):
+        if g_node in self.neighbors:
+            pass
+        else:
+            self.neighbors.append(g_node)
+            g_node.connect_to(self)
 
     def show(self, graphics_window, location=None, color="white"):
         if location is None:
@@ -83,10 +139,10 @@ class Tree:
 
 
 window = Tk()
+window.protocol('WM_DELETE_WINDOW', exit_program)
 window.title("")
 window.geometry('650x450')
-
-
+nodes = {}
 tabs = ttk.Notebook(window)
 actions = ttk.Frame(tabs)
 tabs.add(actions, text='actions')
@@ -97,68 +153,142 @@ Label(actions).grid(column=0, row=0)  # blank
 
 
 def add_client():
-    Label(actions, text="added client: " + add_client_text.get()).grid(column=2, row=1)
+    for address in nodes:
+        if address[1] == PORT.get():
+            Label(actions, text="client with IP:'127.0.0.1' and PORT:'" + PORT.get() + "' already exists!").grid(
+                column=5, row=1)
+            return
+    name = "N" + len(nodes).__str__()
+    node = GNode((IP.get(), PORT.get()), name)
+    nodes[node.address] = node
+    #nodes.append(GNode((IP.get(), PORT.get()), name))
+    Label(actions, text="added client with IP:'127.0.0.1' and PORT:'" + PORT.get() + "' as " + name).grid(
+        column=5, row=1)
+
+
+def add_root():
+    global root
+    if root is not None:
+        print("Root Already Exists")
+        return
+    root = GNode(("127.000.000.001", "10000"), "R", is_root=True)  # needs checking if IP and PORT are valid
+    messagebox.showinfo("Root Added!", "added root with IP:'127.0.0.1' and PORT:'10000' as R")
+    nodes[root.address] = root
+    nodes[root.address] = root
+    #nodes.append(root)
+
+
+Label(actions, text="IP:").grid(column=0, row=1)
+Label(actions, text="PORT:").grid(column=0, row=2)
+IP = Entry(actions)
+IP.grid(column=1, row=1)
+PORT = Entry(actions)
+PORT.grid(column=1, row=2)
 
 
 add_client_button = Button(actions, text="add client", command=add_client)
-add_client_button.grid(column=1, row=1)
-add_client_text = Entry(actions)
-add_client_text.grid(column=0, row=1)
+add_client_button.grid(column=3, row=1)
+
+add_root_button = Button(actions, text="add root", command=add_root)
+add_root_button.grid(column=4, row=1)
+
+
+class RefreshButton:
+    def __init__(self):
+        self.x1 = 10
+        self.x2 = 80
+        self.y1 = 10
+        self.y2 = 30
+        self.rect = gf.Rectangle(gf.Point(self.x1, self.y1), gf.Point(self.x2, self.y2))
+        self.rect.setOutline("red")
+        self.message = gf.Text(Point(45, 20), "REFRESH")
+        self.message.setTextColor('black')
+        self.message.setSize(10)
+
+    def show(self, graph_win, color="white"):
+        try:
+            self.rect.undraw()
+            self.message.undraw()
+        except Exception:
+            pass
+        self.rect.setFill(color)
+        self.rect.draw(graph_win)
+        self.message.draw(graph_win)
+
+    def is_inside(self, point):
+        if point.x > self.x1 and point.y > self.y1 and point.x < self.x2 and point.y < self.y2:
+            return True
+        return False
+
+
+def build_root_tree(root_node):
+    print("building tree")
+    network_graph = root.peer.network_graph
+    for address in nodes:
+        if network_graph.nodes.__contains__(address):
+            if network_graph.nodes[address].left_child is not None:
+                nodes[address].connect_to(nodes[network_graph.nodes[address].left_child.address])
+            if network_graph.nodes[address].right_child is not None:
+                nodes[address].connect_to(nodes[network_graph.nodes[address].right_child.address])
+
+    return Tree(root_node)
 
 
 def show_network():
-    root = GNode(None, "R")
-    a = GNode(None, "A")
-    b = GNode(None, "B")
-    c = GNode(None, "C")
-    d = GNode(None, "D")
-    e = GNode(None, "E")
-    f = GNode(None, "F")
-
-    root.neighbors.append(a)
-    root.neighbors.append(b)
-    a.neighbors.append(c)
-    a.neighbors.append(d)
-    b.neighbors.append(e)
-    b.neighbors.append(f)
-
-    tree = Tree(root)
     win = gf.GraphWin("main", 700, 500)
     win.setBackground('black')
-    tree.show(win)
-    while True:
-        try:
-            clicked_point = win.getMouse()
-            if clicked_point is None:
-                pass
-            else:
-                for node in tree.nodes:
-                    if node.is_inside(clicked_point):
-                        print(node.name)
-                        node.show(win, color="grey")
-                        new_window = MyGraphWin("SAG", 100, 100)
-                        new_window.getMouse()
-                        new_window.close()
-                        node.show(win, color="white")
-        except gf.GraphicsError:
-            break
+    exit = False
+    while exit is False:
+        refresh = RefreshButton()
+        refresh.show(win)
+        if root is not None:
+            tree = build_root_tree(root)
+            tree.show(win)
+            tree_nodes = tree.nodes
+        else:
+            tree_nodes = []
+        i = 0
+        for address in nodes:
+            if nodes[address] not in tree_nodes:
+                nodes[address].show(win, gf.Point(3*(i+1)*CIRCLE_R, win.height - (CIRCLE_R + 10)))
+                i += 1
+        refreshed = False
+        while refreshed is False:
+            try:
+                clicked_point = win.getMouse()
+                if clicked_point is None:
+                    pass
+                elif refresh.is_inside(clicked_point):
+                    refresh.show(win, "grey")
+                    time.sleep(0.1)
+                    refreshed = True
+                else:
+                    for address in nodes:
+                        if nodes[address].is_inside(clicked_point):
+                            print(nodes[address].name)
+                            nodes[address].show(win, color="grey")
+                            nodes[address].peer.user_interface.name = nodes[address].name
+                            nodes[address].peer.user_interface.window_open = True
 
-    """cir = gf.Circle(gf.Point(50, 50), 20)
-    cir.setFill("white")
-    cir.draw(win)
-    message = gf.Text(gf.Point(50, 50), 'AB')
-    message.setTextColor('red')
-    message.setSize(15)
-    message.draw(win)"""
+                            """
+                            new_window = MyGraphWin("SAG", 100, 100)
+                            new_window.getMouse()
+                            new_window.close()
+                            """
+                            nodes[address].show(win, color="white")
+            except gf.GraphicsError as err:
+                exit = True
+                break
     win.close()
 
 
 show_network_button = Button(actions, text="Show Network", command=show_network)
-show_network_button.grid(column=0, row=2)
+show_network_button.grid(column=1, row=3)
+
+exit_button = Button(actions, text="Exit", command=exit_program)
+exit_button.place(relx=1.0, rely=1.0, anchor=SE)
 
 window.mainloop()
-
-
 
 
 
