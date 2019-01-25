@@ -128,6 +128,8 @@ class Peer(threading.Thread):
                 advertise_req_packet = PacketFactory.new_advertise_packet(type='REQ',
                                                                           source_server_address=self.server_address)
                 self.stream.add_message_to_out_buff(address=self.root_address, message=advertise_req_packet.buf)
+                self.print_function("{} sent advertise packet".format(str(self.server_address)))
+
         elif command.startswith("message"):
             if self.joined:
                 message = command[8:]
@@ -251,6 +253,8 @@ class Peer(threading.Thread):
 
         """
         packet_type = packet.get_type()
+        if self.is_root:
+            self.print_function("root received type {} message".format(packet_type))
         if packet_type == 1:
             self.__handle_register_packet(packet)
         elif packet_type == 2:
@@ -323,6 +327,7 @@ class Peer(threading.Thread):
                         "Advertise request received from a client in graph {}".format(str(packet_source_address)))
                 else:
                     father_node = self.graph.find_live_node("FUCK KHAJE POOR")
+                    print("Father found", father_node.address)
                     self.graph.add_node(ip=packet_source_address[0],
                                         port=packet_source_address[1],
                                         father_address=father_node.address)
@@ -343,8 +348,9 @@ class Peer(threading.Thread):
             parent_address = (packet.get_body()[3:18], packet.get_body()[18:23])
 
             self.advertised = True
-            self.stream.add_node(server_address=parent_address,
-                                 set_register_connection=False)
+            if parent_address != self.root_address:
+                self.stream.add_node(server_address=parent_address,
+                                     set_register_connection=False)
             join_packet = PacketFactory.new_join_packet(source_server_address=self.server_address)
             self.stream.add_message_to_out_buff(address=parent_address,
                                                 message=join_packet.buf)
@@ -477,13 +483,15 @@ class Peer(threading.Thread):
         join_request_source_address = packet.get_source_server_address()
         if self.right_child_address is None:
             self.right_child_address = join_request_source_address
-        if self.left_child_address is None:
+        elif self.left_child_address is None:
             self.left_child_address = join_request_source_address
-        if self.right_child_address is not None and self.left_child_address is not None:
+        else:
             self.print_function(
                 "Client {} received join from {} but has no free room for a new child".format(self.server_address,
                                                                                               join_request_source_address))
-        self.stream.add_node(join_request_source_address, set_register_connection=False)
+
+        if not self.is_root:
+            self.stream.add_node(join_request_source_address, set_register_connection=False)
 
     def __get_neighbour(self, sender):
         """

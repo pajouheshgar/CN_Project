@@ -398,7 +398,7 @@ class PacketFactory:
         source_port = int(source_server_address[1])
         body_str = "JOIN"
         length = len(body_str)
-        buff = pack("!HHI4HI{}s".format(length), 1, 2, length, a, b, c, d, source_port, bytes(body_str, 'utf-8'))
+        buff = pack("!HHI4HI{}s".format(length), 1, 3, length, a, b, c, d, source_port, bytes(body_str, 'utf-8'))
         return Packet(buff)
 
     @staticmethod

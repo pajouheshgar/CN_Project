@@ -36,7 +36,7 @@ class Application(Frame):
         def refresh_trigger():
             log_text = self.log_class.log
             while True:
-                #time.sleep(0.1)
+                # time.sleep(0.1)
                 if log_text != self.log_class.log:
                     refresh()
                     log_text = self.log_class.log
@@ -48,7 +48,7 @@ class Application(Frame):
             text.config(state=DISABLED)
 
         threading.Thread(target=refresh_trigger).start()
-        #Button(self.log_tab, text="refresh", command=refresh).pack()
+        # Button(self.log_tab, text="refresh", command=refresh).pack()
         text = scrolledtext.ScrolledText(master=self.log_tab, wrap=WORD, width=400, height=300)
         text.config(state="normal")
         text.insert(INSERT, self.log_class.log)
@@ -94,16 +94,20 @@ class Application(Frame):
         send_button["text"] = "Broadcast"
         send_button["command"] = send_message
         send_button.grid(row=6, column=2)
-        #Label(self, text="message:").grid(column=0, row=6)
+        # Label(self, text="message:").grid(column=0, row=6)
         self.input.grid(row=6, column=0, sticky="W")
 
 
 class UserInterface(threading.Thread):
-    buffer = []
-    window = None
-    window_open = False
-    name = ""
-    peer_log = Log("")
+
+
+    def __init__(self):
+        super().__init__()
+        self.peer_log = Log("")
+        self.buffer = []
+        self.window = None
+        self.window_open = False
+        self.name = ""
 
     def close_window(self):
         self.window.withdraw()
@@ -131,12 +135,12 @@ class UserInterface(threading.Thread):
         self.app.show()
         self.app.mainloop()
 
-        #while True:
-         #   if self.window_open:
+        # while True:
+        #   if self.window_open:
 
-          #      if app is None:
-           #         app = Application(self.window, self.buffer)
-           #     app.show()
-            #    app.mainloop()
+        #      if app is None:
+        #         app = Application(self.window, self.buffer)
+        #     app.show()
+        #    app.mainloop()
 
-            #window.destroy()
+        # window.destroy()

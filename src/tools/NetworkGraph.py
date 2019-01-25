@@ -43,7 +43,7 @@ class GraphNode:
             n += 1
         if self.right_child is None:
             n += 1
-        return n
+        return 2 - n
 
     def has_free_child(self):
         return self.get_n_childs() < 2
@@ -149,7 +149,11 @@ class NetworkGraph:
 
         :return:
         """
-        node = GraphNode((ip, port))
+        check_node = self.find_node(ip, port)
+        if check_node is not None:
+            node = check_node
+        else:
+            node = GraphNode((ip, port))
         self.nodes.append(node)
         father_node = self.find_node(father_address[0], father_address[1])
         node.set_parent(father_node)
