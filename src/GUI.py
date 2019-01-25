@@ -180,7 +180,9 @@ def add_root():
         print("Root Already Exists")
         return
     root = GNode(("127.000.000.001", "10000"), "R", is_root=True)  # needs checking if IP and PORT are valid
-    messagebox.showinfo("Root Added!", "added root with IP:'127.0.0.1' and PORT:'10000' as R")
+    Label(actions, text="added root with IP:'127.0.0.1' and PORT:'10000' as R").grid(
+        column=5, row=1)
+    #messagebox.showinfo("Root Added!", "added root with IP:'127.0.0.1' and PORT:'10000' as R")
     nodes[root.address] = root
     nodes[root.address] = root
     #nodes.append(root)
