@@ -1,9 +1,10 @@
 from src.Stream import Stream
 from src.Packet import Packet, PacketFactory
 from src.UserInterface import UserInterface
-from src.tools.SemiNode import SemiNode
+from src.tools.Node import Node
 from src.tools.NetworkGraph import NetworkGraph, GraphNode
 import time
+import datetime
 import threading
 
 """
@@ -14,7 +15,7 @@ import threading
 """
 
 
-class Peer:
+class Peer(threading.Thread):
     def __init__(self, server_ip, server_port, is_root=False, root_address=None):
         """
         The Peer object constructor.
@@ -42,7 +43,37 @@ class Peer:
         :type is_root: bool
         :type root_address: tuple
         """
-        pass
+        super().__init__()
+        self.server_ip = Node.parse_ip(server_ip)
+        self.server_port = Node.parse_port(str(server_port))
+        self.server_address = (self.server_ip, self.server_port)
+        self.stream = Stream(self.server_ip, self.server_port)
+        self.UI = UserInterface()
+
+        self.is_root = is_root
+        self.left_child_address, self.right_child_address, self.parent_address = None, None, None
+
+        if self.is_root:
+            self.registered_peers_address = {}
+            self.root_ip, self.root_port = self.server_ip, self.server_port
+            self.root_node = GraphNode((self.root_ip, self.root_port))
+            self.graph = NetworkGraph(self.root_node)
+
+        else:
+            self.root_ip = Node.parse_ip(root_address[0])
+            self.root_port = Node.parse_ip(str(root_address[1]))
+
+        self.root_address = (self.root_ip, self.root_port)
+
+        self.running = True
+        self.registered = False
+        self.advertised = False
+        self.joined = False
+        self.reunion_on_fly = False
+        self.counter = 0
+        self.timer_interval = 0.2
+        self.UI.start()
+        self.start()
 
     def start_user_interface(self):
         """
@@ -50,7 +81,7 @@ class Peer:
 
         :return:
         """
-        pass
+        self.print_function("FUCK KHAJE POOR")
 
     def handle_user_interface_buffer(self):
         """
@@ -65,7 +96,50 @@ class Peer:
             2. Don't forget to clear our UserInterface buffer.
         :return:
         """
-        pass
+        for command in self.UI.buffer:
+            self.handle_user_command(command)
+        self.UI.clear_buffer()
+
+    def handle_user_command(self, command):
+        """
+
+        :param command:
+        :type command: str
+        :return:
+        """
+        command = command.lower()
+        if command.startswith("register"):
+            if self.registered:
+                self.print_function("You have been registered before and FUCK KHAJE POOR")
+            else:
+                register_req_packet = PacketFactory.new_register_packet(type='REQ',
+                                                                        source_server_address=self.server_address,
+                                                                        address=self.root_address)
+                # Adding root node to peer's stream
+                self.stream.add_node(server_address=self.root_address, set_register_connection=True)
+                self.stream.add_message_to_out_buff(address=self.root_address, message=register_req_packet.buf)
+
+        elif command.startswith("advertise"):
+            if not self.registered:
+                self.print_function("You must register first to advertise")
+            elif self.advertised:
+                self.print_function("You have advertised before")
+            else:
+                advertise_req_packet = PacketFactory.new_advertise_packet(type='REQ',
+                                                                          source_server_address=self.server_address)
+                self.stream.add_message_to_out_buff(address=self.root_address, message=advertise_req_packet.buf)
+        elif command.startswith("message"):
+            if self.joined:
+                message = command[8:]
+                broadcast_message_packet = PacketFactory.new_message_packet(message=message,
+                                                                            source_server_address=self.server_address)
+                self.send_broadcast_packet(broadcast_message_packet)
+            else:
+                self.print_function("You must join the network before broadcasting a message")
+        elif command.startswith('disconnect'):
+            self.running = False
+        else:
+            self.print_function("Unknown command received: {}".format(command))
 
     def run(self):
         """
@@ -85,7 +159,34 @@ class Peer:
 
         :return:
         """
-        pass
+        if self.is_root:
+            pass
+        else:
+            pass
+
+        if self.counter > 0:
+            received_bufs = self.stream.read_in_buf()
+            received_packets = [PacketFactory.parse_buffer(buf) for buf in received_bufs]
+            for packet in received_packets:
+                self.handle_packet(packet)
+
+            self.stream.clear_in_buff()
+            self.stream.send_out_buf_messages()
+
+        if self.counter == 0 and self.joined and not self.reunion_on_fly:
+            self.reunion_on_fly = True
+            reunion_req_packet = PacketFactory.new_reunion_packet(type='REQ', source_address=self.server_address,
+                                                                  nodes_array=[self.server_address])
+            self.stream.add_message_to_out_buff(address=self.parent_address, message=reunion_req_packet.buf)
+            self.print_function("Sent Reunion Packet to Parent: " + str(self.parent_address))
+
+        self.counter += self.timer_interval * 10
+        if self.counter == 4 * 10:
+            self.counter = 0
+        if self.is_root:
+            for gnode in self.graph.nodes:
+                gnode.reunion_timer += self.timer_interval * 10
+        time.sleep(self.timer_interval)
 
     def run_reunion_daemon(self):
         """
@@ -112,9 +213,9 @@ class Peer:
 
         :return:
         """
-        pass
+        self.print_function("FUCK KHAJE POOR")
 
-    def send_broadcast_packet(self, broadcast_packet):
+    def send_broadcast_packet(self, broadcast_packet, exclude_address):
         """
 
         For setting broadcast packets buffer into Nodes out_buff.
@@ -127,7 +228,12 @@ class Peer:
 
         :return:
         """
-        pass
+        if self.parent_address is not None and self.parent_address != exclude_address:
+            self.stream.add_message_to_out_buff(self.parent_address, broadcast_packet.buf)
+        if self.left_child_address is not None and self.left_child_address != exclude_address:
+            self.stream.add_message_to_out_buff(self.left_child_address, broadcast_packet.buf)
+        if self.right_child_address is not None and self.right_child_address != exclude_address:
+            self.stream.add_message_to_out_buff(self.right_child_address, broadcast_packet.buf)
 
     def handle_packet(self, packet):
         """
@@ -142,7 +248,18 @@ class Peer:
         :type packet Packet
 
         """
-        pass
+        if packet.type == 1:
+            self.__handle_register_packet(packet)
+        elif packet.type == 2:
+            self.__handle_advertise_packet(packet)
+        elif packet.type == 3:
+            self.__handle_join_packet(packet)
+        elif packet.type == 4:
+            self.__handle_message_packet(packet)
+        elif packet.type == 5:
+            self.__handle_reunion_packet(packet)
+        else:
+            self.print_function("Unknown type of packet received {}".format(packet.get_body()))
 
     def __check_registered(self, source_address):
         """
@@ -153,7 +270,9 @@ class Peer:
 
         :return:
         """
-        pass
+        if source_address in self.registered_peers_address:
+            return True
+        return False
 
     def __handle_advertise_packet(self, packet):
         """
@@ -184,7 +303,54 @@ class Peer:
 
         :return:
         """
-        pass
+        if self.is_root:
+            self.__handle_advertise_packet_root(packet)
+        else:
+            self.__handle_advertise_packet_client(packet)
+
+    def __handle_advertise_packet_root(self, packet):
+        if packet.get_body()[:3] == "REQ":
+            packet_source_address = packet.get_source_server_address()
+            if not self.__check_registered(packet_source_address):
+                self.print_function(
+                    "Advertise request received from unregistered client {}".format(str(packet_source_address)))
+            else:
+                if self.graph.find_node(packet_source_address[0], packet_source_address[1]) is not None:
+                    self.print_function(
+                        "Advertise request received from a client in graph {}".format(str(packet_source_address)))
+                else:
+                    father_node = self.graph.find_live_node("FUCK KHAJE POOR")
+                    self.graph.add_node(ip=packet_source_address[0],
+                                        port=packet_source_address[1],
+                                        father_address=father_node.address)
+                    self.graph.turn_on_node(packet_source_address)
+                    register_response_packet = PacketFactory.new_advertise_packet(type='RES',
+                                                                                  source_server_address=self.server_address,
+                                                                                  neighbour=father_node.address)
+                    self.stream.add_message_to_out_buff(address=packet_source_address,
+                                                        message=register_response_packet.buf)
+                    self.registered_peers_address[packet_source_address] = 1
+                    self.print_function(
+                        "Advertise request received from {} and register response sent".format(packet_source_address))
+        else:
+            self.print_function("Root received advertise response. Wtf? FUCK KHAJE POOR")
+
+    def __handle_advertise_packet_client(self, packet):
+        if packet.get_body()[:3] == 'RES':
+            parent_address = (packet.get_body()[3:18], packet.get_body()[18:23])
+
+            self.advertised = True
+            self.stream.add_node(server_address=parent_address,
+                                 set_register_connection=False)
+            join_packet = PacketFactory.new_join_packet(source_server_address=self.server_address)
+            self.stream.add_message_to_out_buff(address=parent_address,
+                                                message=join_packet.buf)
+            self.parent_address = parent_address
+            self.joined = True
+            self.print_function("Advertise response received from root. Client {} sent join request to {}".format(
+                str(self.server_address), str(parent_address)))
+        else:
+            self.print_function("Client received advertise request. Wtf? FUCK KHAJE POOR")
 
     def __handle_register_packet(self, packet):
         """
@@ -201,7 +367,35 @@ class Peer:
         :type packet Packet
         :return:
         """
-        pass
+        if self.is_root:
+            self.__handle_register_packet_root(packet)
+        else:
+            self.__handle_register_packet_client(packet)
+
+    def __handle_register_packet_root(self, packet):
+        if packet.get_body()[:3] == "REQ":
+            packet_source_address = packet.get_source_server_address()
+            if self.__check_registered(packet_source_address):
+                self.print_function("Duplicate register request received from {}".format(str(packet_source_address)))
+            else:
+                self.stream.add_node(server_address=packet_source_address,
+                                     set_register_connection=True)
+                register_response_packet = PacketFactory.new_register_packet(type='RES',
+                                                                             source_server_address=self.server_address)
+                self.stream.add_message_to_out_buff(address=packet.get_source_server_address(),
+                                                    message=register_response_packet.buf)
+                self.registered_peers_address[packet_source_address] = 1
+                self.print_function(
+                    "Register request received from {} and register response sent".format(packet_source_address))
+        else:
+            self.print_function("Root received register response. Wtf? FUCK KHAJE POOR")
+
+    def __handle_register_packet_client(self, packet):
+        if packet.get_body()[:3] == "RES":
+            self.registered = True
+            self.print_function("Client {} received register response".format(self.server_address))
+        else:
+            self.print_function("Client received register request. Wtf? FUCK KHAJE POOR")
 
     def __check_neighbour(self, address):
         """
@@ -214,7 +408,7 @@ class Peer:
         :return: Whether is address in our neighbours or not.
         :rtype: bool
         """
-        pass
+        return address == self.parent_address or address == self.left_child_address or address == self.right_child_address
 
     def __handle_message_packet(self, packet):
         """
@@ -230,7 +424,13 @@ class Peer:
 
         :return:
         """
-        pass
+        source_address = packet.get_source_server_address()
+        if self.__check_neighbour(source_address):
+            broadcast_message_packet = PacketFactory.new_message_packet(message=packet.get_body(),
+                                                                        source_server_address=self.server_address)
+            self.send_broadcast_packet(broadcast_message_packet, exclude_address=source_address)
+        else:
+            self.print_function("Broadcast packet received from KHAJE POOR. wut??")
 
     def __handle_reunion_packet(self, packet):
         """
@@ -255,7 +455,9 @@ class Peer:
         :param packet: Arrived reunion packet
         :return:
         """
-        pass
+        source_address = packet.get_source_server_address()
+        if not self.__check_neighbour(source_address):
+            self.print_function("Reunion packet received from KHAJE POOR. wut??")
 
     def __handle_join_packet(self, packet):
         """
@@ -269,7 +471,16 @@ class Peer:
 
         :return:
         """
-        pass
+        join_request_source_address = packet.get_source_server_address()
+        if self.right_child_address is None:
+            self.right_child_address = join_request_source_address
+        if self.left_child_address is None:
+            self.left_child_address = join_request_source_address
+        if self.right_child_address is not None and self.left_child_address is not None:
+            self.print_function(
+                "Client {} received join from {} but has no free room for a new child".format(self.server_address,
+                                                                                              join_request_source_address))
+        self.stream.add_node(join_request_source_address, set_register_connection=False)
 
     def __get_neighbour(self, sender):
         """
@@ -283,3 +494,7 @@ class Peer:
         :return: The specified neighbour for the sender; The format is like ('192.168.001.001', '05335').
         """
         pass
+
+    def print_function(self, message):
+        print(message)
+        self.UI.peer_log.log += "{}:\n\t{}\n".format(datetime.datetime.now(), message)

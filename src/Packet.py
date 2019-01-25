@@ -181,7 +181,7 @@ from struct import *
 
 
 def bytes2str(b):
-    return str(b)[2:-1]
+    return b.decode()
 
 
 class Packet:
@@ -466,6 +466,7 @@ if __name__ == "__main__":
     print(P.get_source_server_port())
     print(P.get_source_server_ip())
     print(P.get_type())
+    print("Header:", P.get_header())
     print("Header:", P.get_header())
     print(P.get_body())
     print(P.get_length())

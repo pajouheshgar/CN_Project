@@ -69,7 +69,7 @@ class Application(Frame):
             self.output['text'] = 'registered!'
 
         def send_message():
-            self.__buffer.append('SendMessage ' + self.input.get())
+            self.__buffer.append('Message ' + self.input.get())
             self.output['text'] = 'message sent: ' + self.input.get()
 
         Label(self).grid()  # blank first line

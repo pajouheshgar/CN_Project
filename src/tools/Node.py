@@ -18,17 +18,19 @@ class Node:
         :param set_register:
         """
         self.is_root = set_root
+        self.is_registered = set_register
         self.server_ip = Node.parse_ip(server_address[0])
         self.server_port = Node.parse_port(server_address[1])
 
-        print("Server Address: ", server_address)
+        print("New Node Created\n\tServer Address: ", server_address)
         print(self.server_ip, self.server_port)
 
+        try:
+            self.client = ClientSocket(mode=server_address[0], port=int(server_address[1]), single_use='False')
+        except:
+            raise ConnectionRefusedError
         self.out_buff = []
         self.in_buff = []
-        self.client = ClientSocket(mode=server_address[0], port=server_address[1], single_use='False')
-
-        pass
 
     def send_message(self):
         """
@@ -39,8 +41,7 @@ class Node:
         for data in self.out_buff:
             rcvd_data = self.client.send(data)
             self.in_buff.append(rcvd_data)
-
-        pass
+        self.out_buff = []
 
     def add_message_to_out_buff(self, message):
         """

@@ -1,7 +1,7 @@
 from src.tools.simpletcp.serversocket import ServerSocket
+import threading
 
-
-class TCPServer:
+class TCPServer(threading.Thread):
     """
      Mode specifies the IP address the server socket binds to.
      mode can be one of two special values:
@@ -21,6 +21,7 @@ class TCPServer:
 
     def __init__(self, mode, port, read_callback,
                  maximum_connections=5, receive_bytes=2048):
+        super().__init__()
         self.server_socket = ServerSocket(
             mode, port, read_callback, maximum_connections, receive_bytes
         )

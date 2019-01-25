@@ -33,12 +33,6 @@ class MyGraphWin(gf.GraphWin):
         return gf.Point(x, y)
 
 
-"""  
-azed variables: 
-    Peer.network_graph 
-    right_child, left_child
-    root_address=("127.0.0.1", 10000)    
-"""  #  COPS FROM AZED
 
 
 CIRCLE_R = 15
@@ -70,7 +64,7 @@ class GNode:
         self.peer = Peer("127.0.0.1", 10000, is_root=True)
         self.port = self.peer.server_port
         self.address = (self.peer.server_ip, self.peer.server_port)
-        self.peer.user_interface.name = self.name
+        self.peer.UI.name = self.name
         print("SERVER ADDED")
         thread = threading.Thread(target=self.peer.run)
         thread.start()
@@ -79,7 +73,7 @@ class GNode:
         self.peer = Peer("127.0.0.1", self.port, is_root=False, root_address=("127.0.0.1", 10000))
         self.port = self.peer.server_port
         self.address = (self.peer.server_ip, self.peer.server_port)
-        self.peer.user_interface.name = self.name
+        self.peer.UI.name = self.name
         print("CLIENT ADDED")
         thread = threading.Thread(target=self.peer.run)
         thread.start()
@@ -93,7 +87,7 @@ class GNode:
 
     def show(self, graphics_window, location=None, color=None):
         if color is None:
-            if self.peer.state == "registered":
+            if self.peer.registered:
                 color = "green"
             else:
                 color = "white"
@@ -232,7 +226,7 @@ class RefreshButton:
 
 
 def build_root_tree(root_node):
-    network_graph = root.peer.network_graph
+    network_graph = root.peer.graph
     for address in nodes:
         if network_graph.nodes.__contains__(address):
             if network_graph.nodes[address].left_child is not None:
@@ -280,8 +274,8 @@ def show_network():
                     if nodes[address].is_inside(clicked_point):
                         print(nodes[address].name)
                         nodes[address].show(win, color="grey")
-                        nodes[address].peer.user_interface.name = nodes[address].name
-                        nodes[address].peer.user_interface.open_window()
+                        nodes[address].peer.UI.name = nodes[address].name
+                        nodes[address].peer.UI.open_window()
 
                         """
                         new_window = MyGraphWin("SAG", 100, 100)
