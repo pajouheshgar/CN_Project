@@ -49,6 +49,7 @@ class GNode:
     def __init__(self, address=None, name="", is_root=False):
         self.port = None
         self.address = None
+        self.name = name
         if address is None:
             self.peer = None
         else:
@@ -62,7 +63,6 @@ class GNode:
                 self.create_client()
 
         #self.address = (str(address[0]), str(address[1]))
-        self.name = name
         self.neighbors = []
         self.location = None
 
@@ -70,6 +70,7 @@ class GNode:
         self.peer = Peer("127.0.0.1", 10000, is_root=True)
         self.port = self.peer.server_port
         self.address = (self.peer.server_ip, self.peer.server_port)
+        self.peer.user_interface.name = self.name
         print("SERVER ADDED")
         thread = threading.Thread(target=self.peer.run)
         thread.start()
@@ -78,6 +79,7 @@ class GNode:
         self.peer = Peer("127.0.0.1", self.port, is_root=False, root_address=("127.0.0.1", 10000))
         self.port = self.peer.server_port
         self.address = (self.peer.server_ip, self.peer.server_port)
+        self.peer.user_interface.name = self.name
         print("CLIENT ADDED")
         thread = threading.Thread(target=self.peer.run)
         thread.start()
@@ -152,9 +154,9 @@ nodes = {}
 tabs = ttk.Notebook(window)
 actions = ttk.Frame(tabs)
 tabs.add(actions, text='actions')
+#page2 = ttk.Frame(tabs)
+#tabs.add(page2, text='console')
 tabs.pack(expand=1, fill='both')
-page2 = ttk.Frame(tabs)
-tabs.add(page2, text='console')
 Label(actions).grid(column=0, row=0)  # blank
 
 
@@ -277,7 +279,7 @@ def show_network():
                         print(nodes[address].name)
                         nodes[address].show(win, color="grey")
                         nodes[address].peer.user_interface.name = nodes[address].name
-                        nodes[address].peer.user_interface.window_open = True
+                        nodes[address].peer.user_interface.open_window()
 
                         """
                         new_window = MyGraphWin("SAG", 100, 100)
