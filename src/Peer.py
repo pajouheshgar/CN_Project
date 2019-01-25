@@ -118,6 +118,8 @@ class Peer(threading.Thread):
                 # Adding root node to peer's stream
                 self.stream.add_node(server_address=self.root_address, set_register_connection=True)
                 self.stream.add_message_to_out_buff(address=self.root_address, message=register_req_packet.buf)
+                self.print_function("{} sent register request".format(self.server_address))
+
 
         elif command.startswith("advertise"):
             if not self.registered:
@@ -159,34 +161,36 @@ class Peer(threading.Thread):
 
         :return:
         """
-        if self.is_root:
-            pass
-        else:
-            pass
+        while True:
+            if self.is_root:
+                pass
+            else:
+                pass
 
-        if self.counter > 0:
-            received_bufs = self.stream.read_in_buf()
-            received_packets = [PacketFactory.parse_buffer(buf) for buf in received_bufs]
-            for packet in received_packets:
-                self.handle_packet(packet)
+            if self.counter > 0 or True:
+                received_bufs = self.stream.read_in_buf()
+                received_packets = [PacketFactory.parse_buffer(buf) for buf in received_bufs]
+                for packet in received_packets:
+                    self.handle_packet(packet)
 
-            self.stream.clear_in_buff()
-            self.stream.send_out_buf_messages()
+                self.stream.clear_in_buff()
+                self.stream.send_out_buf_messages()
+                self.handle_user_interface_buffer()
 
-        if self.counter == 0 and self.joined and not self.reunion_on_fly:
-            self.reunion_on_fly = True
-            reunion_req_packet = PacketFactory.new_reunion_packet(type='REQ', source_address=self.server_address,
-                                                                  nodes_array=[self.server_address])
-            self.stream.add_message_to_out_buff(address=self.parent_address, message=reunion_req_packet.buf)
-            self.print_function("Sent Reunion Packet to Parent: " + str(self.parent_address))
+            if self.counter == 0 and self.joined and not self.reunion_on_fly:
+                self.reunion_on_fly = True
+                reunion_req_packet = PacketFactory.new_reunion_packet(type='REQ', source_address=self.server_address,
+                                                                      nodes_array=[self.server_address])
+                self.stream.add_message_to_out_buff(address=self.parent_address, message=reunion_req_packet.buf)
+                self.print_function("Sent Reunion Packet to Parent: " + str(self.parent_address))
 
-        self.counter += self.timer_interval * 10
-        if self.counter == 4 * 10:
-            self.counter = 0
-        if self.is_root:
-            for gnode in self.graph.nodes:
-                gnode.reunion_timer += self.timer_interval * 10
-        time.sleep(self.timer_interval)
+            self.counter += self.timer_interval * 10
+            if self.counter == 4 * 10:
+                self.counter = 0
+            if self.is_root:
+                for gnode in self.graph.nodes:
+                    gnode.reunion_timer += self.timer_interval * 10
+            time.sleep(self.timer_interval)
 
     def run_reunion_daemon(self):
         """
