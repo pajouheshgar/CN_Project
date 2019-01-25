@@ -89,7 +89,13 @@ class GNode:
             self.neighbors.append(g_node)
             g_node.connect_to(self)
 
-    def show(self, graphics_window, location=None, color="white"):
+    def show(self, graphics_window, location=None, color=None):
+        if color is None:
+            if self.peer.state == "registered":
+                color = "green"
+            else:
+                color = "white"
+
         if location is None:
             location = self.location
         else:
@@ -222,7 +228,6 @@ class RefreshButton:
 
 
 def build_root_tree(root_node):
-    print("building tree")
     network_graph = root.peer.network_graph
     for address in nodes:
         if network_graph.nodes.__contains__(address):
@@ -230,7 +235,6 @@ def build_root_tree(root_node):
                 nodes[address].connect_to(nodes[network_graph.nodes[address].left_child.address])
             if network_graph.nodes[address].right_child is not None:
                 nodes[address].connect_to(nodes[network_graph.nodes[address].right_child.address])
-
     return Tree(root_node)
 
 
@@ -279,7 +283,7 @@ def show_network():
                             new_window.getMouse()
                             new_window.close()
                             """
-                            nodes[address].show(win, color="white")
+                            nodes[address].show(win)
             except gf.GraphicsError as err:
                 exit = True
                 break
