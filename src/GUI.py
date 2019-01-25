@@ -239,10 +239,11 @@ def build_root_tree(root_node):
 
 
 def show_network():
+    win = gf.GraphWin("main", 700, 500, autoflush=False)
+    win.setBackground('black')
     exit = False
     while exit is False:
-        win = gf.GraphWin("main", 700, 500)
-        win.setBackground('black')
+        win.update()
         refresh = RefreshButton()
         refresh.show(win)
         if root is not None:
@@ -260,33 +261,33 @@ def show_network():
             if not is_in_tree:
                 nodes[address].show(win, gf.Point(3*(i+1)*CIRCLE_R, win.height - (CIRCLE_R + 10)))
                 i += 1
-        refreshed = False
-        while refreshed is False:
-            try:
-                clicked_point = win.getMouse()
-                if clicked_point is None:
-                    pass
-                elif refresh.is_inside(clicked_point):
-                    refresh.show(win, "grey")
-                    win.close()
-                    refreshed = True
-                else:
-                    for address in nodes:
-                        if nodes[address].is_inside(clicked_point):
-                            print(nodes[address].name)
-                            nodes[address].show(win, color="grey")
-                            nodes[address].peer.user_interface.name = nodes[address].name
-                            nodes[address].peer.user_interface.window_open = True
+        try:
+            clicked_point = win.getMouse()
+            if clicked_point is None:
+                pass
+            elif refresh.is_inside(clicked_point):
+                refresh.show(win, "grey")
+                for item in win.items[:]:
+                    item.undraw()
+                win.update()
+                refresh.show(win, "white")
+            else:
+                for address in nodes:
+                    if nodes[address].is_inside(clicked_point):
+                        print(nodes[address].name)
+                        nodes[address].show(win, color="grey")
+                        nodes[address].peer.user_interface.name = nodes[address].name
+                        nodes[address].peer.user_interface.window_open = True
 
-                            """
-                            new_window = MyGraphWin("SAG", 100, 100)
-                            new_window.getMouse()
-                            new_window.close()
-                            """
-                            nodes[address].show(win)
-            except gf.GraphicsError as err:
-                exit = True
-                break
+                        """
+                        new_window = MyGraphWin("SAG", 100, 100)
+                        new_window.getMouse()
+                        new_window.close()
+                        """
+                        nodes[address].show(win)
+        except gf.GraphicsError as err:
+            exit = True
+            break
     win.close()
 
 
