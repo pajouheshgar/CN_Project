@@ -81,12 +81,13 @@ class ServerSocket:
                     try:
                         data = sock.recv(self.received_bytes)
                     except socket.error as e:
-                        if e.errno == errno.ECONNRESET:
-                            # Consider 'Connection reset by peer'
-                            # the same as reading zero bytes
-                            data = None
-                        else:
-                            raise e
+                        # if e.errno is errno.ECONNRESET:
+                        #     # Consider 'Connection reset by peer'
+                        #     # the same as reading zero bytes
+                        #     data = None
+                        # else:
+                        #     raise e
+                        data = None
                     if data:
                         # Call the callback
                         self.callback(IPs[sock], queues[sock], data)
@@ -110,7 +111,6 @@ class ServerSocket:
                 try:
                     # Get the next chunk of data in the queue, but don't wait.
                     data = queues[sock].get_nowait()
-                    data = bytes(data, "UTF-8")
                 except queue.Empty:
                     # The queue is empty -> nothing needs to be written.
                     writers.remove(sock)

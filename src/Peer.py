@@ -119,11 +119,9 @@ class Peer(threading.Thread):
                 self.stream.add_node(server_address=self.root_address, set_register_connection=True)
                 self.stream.add_message_to_out_buff(address=self.root_address, message=register_req_packet.buf)
                 self.print_function("{} sent register request".format(self.server_address))
-
-
         elif command.startswith("advertise"):
             if not self.registered:
-                self.print_function("You must register first to advertise")
+                self.print_function("{} must register first to advertise".format(str(self.server_address)))
             elif self.advertised:
                 self.print_function("You have advertised before")
             else:
@@ -252,15 +250,16 @@ class Peer(threading.Thread):
         :type packet Packet
 
         """
-        if packet.type == 1:
+        packet_type = packet.get_type()
+        if packet_type == 1:
             self.__handle_register_packet(packet)
-        elif packet.type == 2:
+        elif packet_type == 2:
             self.__handle_advertise_packet(packet)
-        elif packet.type == 3:
+        elif packet_type == 3:
             self.__handle_join_packet(packet)
-        elif packet.type == 4:
+        elif packet_type == 4:
             self.__handle_message_packet(packet)
-        elif packet.type == 5:
+        elif packet_type == 5:
             self.__handle_reunion_packet(packet)
         else:
             self.print_function("Unknown type of packet received {}".format(packet.get_body()))

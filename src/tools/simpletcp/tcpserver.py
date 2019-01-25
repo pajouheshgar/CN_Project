@@ -1,6 +1,7 @@
 from src.tools.simpletcp.serversocket import ServerSocket
 import threading
 
+
 class TCPServer(threading.Thread):
     """
      Mode specifies the IP address the server socket binds to.
@@ -36,14 +37,3 @@ class TCPServer(threading.Thread):
     @property
     def port(self):
         return self.server_socket.port
-
-
-def callback(ip, q, data):
-    print("{} received from {}".format(data, ip))
-    q.put("SUCK")
-    q.put("BITCH")
-
-
-if __name__ == "__main__":
-    server = TCPServer(mode='localhost', port=8765, read_callback=callback)
-    server.run()

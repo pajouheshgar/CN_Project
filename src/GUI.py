@@ -23,7 +23,7 @@ class MyGraphWin(gf.GraphWin):
         self.mouseY = None
         while self.mouseX == None or self.mouseY == None:
             self.update()
-            # _tkCall(self.update)
+            #_tkCall(self.update)
             if self.isClosed():
                 return 0
             time.sleep(.1)  # give up thread
@@ -31,6 +31,14 @@ class MyGraphWin(gf.GraphWin):
         self.mouseX = None
         self.mouseY = None
         return gf.Point(x, y)
+
+
+"""  
+azed variables: 
+    Peer.network_graph 
+    right_child, left_child
+    root_address=("127.0.0.1", 10000)    
+"""  #  COPS FROM AZED
 
 
 CIRCLE_R = 15
@@ -54,7 +62,7 @@ class GNode:
                 self.port = int(address[1])
                 self.create_client()
 
-        # self.address = (str(address[0]), str(address[1]))
+        #self.address = (str(address[0]), str(address[1]))
         self.neighbors = []
         self.location = None
 
@@ -100,11 +108,11 @@ class GNode:
         circle.draw(graphics_window)
         label = gf.Text(location, self.name)
         label.setTextColor('red')
-        label.setSize(CIRCLE_R - CIRCLE_R // 4)
+        label.setSize(CIRCLE_R - CIRCLE_R//4)
         label.draw(graphics_window)
 
     def is_inside(self, point):
-        if (point.x - self.location.x) ** 2 + (point.y - self.location.y) ** 2 <= (CIRCLE_R + 1) ** 2:
+        if (point.x - self.location.x)**2 + (point.y - self.location.y)**2 <= (CIRCLE_R + 1)**2:
             return True
         return False
 
@@ -116,7 +124,7 @@ class Tree:
 
     def show(self, graphics_window):
         marked = [self.root]
-        x, y = graphics_window.width / 2, CIRCLE_R + 10
+        x, y = graphics_window.width/2, CIRCLE_R + 10
         queue = [(self.root, gf.Point(x, y), 0)]
         self.root.show(graphics_window, gf.Point(x, y))
         while len(queue) > 0:
@@ -125,9 +133,9 @@ class Tree:
             for child in node.neighbors:
                 if child not in marked:
                     marked.append(child)
-                    new_location = gf.Point(location.x + (2 * i - 1) * graphics_window.width / (2 ** (depth + 2)),
+                    new_location = gf.Point(location.x + (2*i-1)*graphics_window.width/(2**(depth+2)),
                                             location.y + 50)
-                    queue.append((child, new_location, depth + 1))
+                    queue.append((child, new_location, depth+1))
                     line = gf.Line(gf.Point(location.x, location.y + CIRCLE_R),
                                    gf.Point(new_location.x, new_location.y - CIRCLE_R))
                     line.setFill('yellow')
@@ -146,22 +154,25 @@ nodes = {}
 tabs = ttk.Notebook(window)
 actions = ttk.Frame(tabs)
 tabs.add(actions, text='actions')
-# page2 = ttk.Frame(tabs)
-# tabs.add(page2, text='console')
+#page2 = ttk.Frame(tabs)
+#tabs.add(page2, text='console')
 tabs.pack(expand=1, fill='both')
 Label(actions).grid(column=0, row=0)  # blank
 
 
 def add_client():
+    if PORT.get() == "":
+        messagebox.showinfo("No Port Given!", "please fill the port field")
+        return
     for address in nodes:
         if address[1] == PORT.get():
-            Label(actions, text="client with IP:'127.0.0.1' and PORT:'" + PORT.get() + "' already exists!").grid(
-                column=5, row=1)
+            messagebox.showinfo("Client Already Exists!", "the input port is in use")
+            #Label(actions, text="client with IP:'127.0.0.1' and PORT:'" + PORT.get() + "' already exists!").grid(column=5, row=1)
             return
     name = "N" + len(nodes).__str__()
     node = GNode((IP.get(), PORT.get()), name)
     nodes[node.address] = node
-    # nodes.append(GNode((IP.get(), PORT.get()), name))
+    #nodes.append(GNode((IP.get(), PORT.get()), name))
     Label(actions, text="added client with IP:'127.0.0.1' and PORT:'" + PORT.get() + "' as " + name).grid(
         column=5, row=1)
 
@@ -169,23 +180,25 @@ def add_client():
 def add_root():
     global root
     if root is not None:
-        print("Root Already Exists")
+        messagebox.showinfo("Root Already Exists!", "can't add more than one root")
         return
     root = GNode(("127.000.000.001", "10000"), "R", is_root=True)  # needs checking if IP and PORT are valid
     Label(actions, text="added root with IP:'127.0.0.1' and PORT:'10000' as R").grid(
         column=5, row=1)
-    # messagebox.showinfo("Root Added!", "added root with IP:'127.0.0.1' and PORT:'10000' as R")
+    #messagebox.showinfo("Root Added!", "added root with IP:'127.0.0.1' and PORT:'10000' as R")
     nodes[root.address] = root
     nodes[root.address] = root
-    # nodes.append(root)
+    #nodes.append(root)
 
 
 Label(actions, text="IP:").grid(column=0, row=1)
 Label(actions, text="PORT:").grid(column=0, row=2)
 IP = Entry(actions)
+IP.insert(END, "(optional)")
 IP.grid(column=1, row=1)
 PORT = Entry(actions)
 PORT.grid(column=1, row=2)
+
 
 add_client_button = Button(actions, text="add client", command=add_client)
 add_client_button.grid(column=3, row=1)
@@ -254,7 +267,7 @@ def show_network():
                 if address == node.address:
                     is_in_tree = True
             if not is_in_tree:
-                nodes[address].show(win, gf.Point(3 * (i + 1) * CIRCLE_R, win.height - (CIRCLE_R + 10)))
+                nodes[address].show(win, gf.Point(3*(i+1)*CIRCLE_R, win.height - (CIRCLE_R + 10)))
                 i += 1
         try:
             clicked_point = win.getMouse()
@@ -293,3 +306,7 @@ exit_button = Button(actions, text="Exit", command=exit_program)
 exit_button.place(relx=1.0, rely=1.0, anchor=SE)
 
 window.mainloop()
+
+
+
+

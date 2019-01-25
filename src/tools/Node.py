@@ -26,7 +26,7 @@ class Node:
         print(self.server_ip, self.server_port)
 
         try:
-            self.client = ClientSocket(mode=server_address[0], port=int(server_address[1]), single_use='False')
+            self.client = ClientSocket(mode=server_address[0], port=int(server_address[1]), single_use=False)
         except:
             raise ConnectionRefusedError
         self.out_buff = []
