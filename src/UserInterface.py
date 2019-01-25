@@ -88,8 +88,7 @@ class Application(Frame):
         register_button["command"] = register
         register_button.grid(row=2)
 
-        self.output.grid(row=5, column=0, sticky="W")
-
+        self.output.grid(row=6, column=3, sticky="W")
         send_button = Button(self)
         send_button["text"] = "Broadcast"
         send_button["command"] = send_message

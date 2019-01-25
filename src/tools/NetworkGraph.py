@@ -156,7 +156,6 @@ class NetworkGraph:
             node = GraphNode((ip, port))
         self.nodes.append(node)
         father_node = self.find_node(father_address[0], father_address[1])
-        node.set_parent(father_node)
         father_node.add_child(node)
 
     def find_new_parent_for_node(self, node_address):

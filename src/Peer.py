@@ -70,6 +70,7 @@ class Peer(threading.Thread):
         self.advertised = False
         self.joined = False
         self.reunion_on_fly = False
+        self.reunion_timer = 0
         self.counter = 0
         self.timer_interval = 0.2
         self.UI.start()
@@ -135,7 +136,8 @@ class Peer(threading.Thread):
                 message = command[8:]
                 broadcast_message_packet = PacketFactory.new_message_packet(message=message,
                                                                             source_server_address=self.server_address)
-                self.send_broadcast_packet(broadcast_message_packet)
+                self.print_function("{} is broadcasting message: {}".format(str(self.server_address), message))
+                self.send_broadcast_packet(broadcast_message_packet, "FUCK KHAJE POOR")
             else:
                 self.print_function("You must join the network before broadcasting a message")
         elif command.startswith('disconnect'):
@@ -177,12 +179,15 @@ class Peer(threading.Thread):
                 self.stream.send_out_buf_messages()
                 self.handle_user_interface_buffer()
 
-            if self.counter == 0 and self.joined and not self.reunion_on_fly:
+            if self.reunion_timer == 0 and self.joined and not self.reunion_on_fly:
                 self.reunion_on_fly = True
                 reunion_req_packet = PacketFactory.new_reunion_packet(type='REQ', source_address=self.server_address,
                                                                       nodes_array=[self.server_address])
                 self.stream.add_message_to_out_buff(address=self.parent_address, message=reunion_req_packet.buf)
                 self.print_function("Sent Reunion Packet to Parent: " + str(self.parent_address))
+
+            if not self.reunion_on_fly and self.reunion_timer > 0:
+                self.reunion_timer -= self.timer_interval * 10
 
             self.counter += self.timer_interval * 10
             if self.counter == 4 * 10:
@@ -253,8 +258,8 @@ class Peer(threading.Thread):
 
         """
         packet_type = packet.get_type()
-        if self.is_root:
-            self.print_function("root received type {} message".format(packet_type))
+        # if self.is_root:
+        #     self.print_function("root received type {} message".format(packet_type))
         if packet_type == 1:
             self.__handle_register_packet(packet)
         elif packet_type == 2:
@@ -435,6 +440,7 @@ class Peer(threading.Thread):
         """
         source_address = packet.get_source_server_address()
         if self.__check_neighbour(source_address):
+            self.print_function("{} received broadcast message: {}".format(self.server_address, packet.get_body()))
             broadcast_message_packet = PacketFactory.new_message_packet(message=packet.get_body(),
                                                                         source_server_address=self.server_address)
             self.send_broadcast_packet(broadcast_message_packet, exclude_address=source_address)
@@ -468,6 +474,73 @@ class Peer(threading.Thread):
         if not self.__check_neighbour(source_address):
             self.print_function("Reunion packet received from KHAJE POOR. wut??")
 
+    def __handle_reunion_packet_root(self, packet):
+        body = packet.get_body()
+        if body[:3] == "REQ":
+            packet_source_address = packet.get_source_server_address()
+            if self.graph.find_node(packet_source_address[0], packet_source_address[1]) is None:
+                self.print_function("Root received reunion from {} which is not in graph".format(packet_source_address))
+            nodes_address_list = []
+            n_nodes = int(body[3:5])
+            for i in range(n_nodes):
+                ip = body[5 + 20 * i: 5 + 15 + 20 * i]
+                port = body[20 + 20 * i: 20 + 5 + 20 * i]
+                nodes_address_list.append((ip, port))
+            reunion_sender_node = self.graph.find_node(nodes_address_list[0][0], nodes_address_list[0][1])
+            self.print_function(
+                "Root received Reunion from {} and reunion response sent".format(str(reunion_sender_node)))
+            nodes_address_list.reverse()
+            reunion_sender_node.reunion_timer = 0
+            reunion_response_packet = PacketFactory.new_reunion_packet(type="RES", source_address=self.root_address,
+                                                                       nodes_array=nodes_address_list)
+            self.stream.add_message_to_out_buff(packet_source_address, message=reunion_response_packet.buf)
+
+        else:
+            self.print_function("Root received reunion response. Wtf? FUCK KHAJE POOR")
+
+    def __handle_reunion_packet_client(self, packet):
+        body = packet.get_body()
+        if not self.joined:
+            self.print_function("{} has no parent to redirect reunion request to".format(self.server_address))
+            return
+        if body[:3] == "REQ":
+            nodes_address_list = []
+            n_nodes = int(body[3:5])
+            for i in range(n_nodes):
+                ip = body[5 + 20 * i: 5 + 15 + 20 * i]
+                port = body[20 + 20 * i: 20 + 5 + 20 * i]
+                nodes_address_list.append((ip, port))
+            reunion_sender_node = self.graph.find_node(nodes_address_list[0][0], nodes_address_list[0][1])
+            nodes_address_list.append(self.server_address)
+            reunion_response_packet = PacketFactory.new_reunion_packet(type="REQ", source_address=self.server_address,
+                                                                       nodes_array=nodes_address_list)
+            self.stream.add_message_to_out_buff(self.parent_address, message=reunion_response_packet.buf)
+            self.print_function(
+                "{} received Reunion from {} and reunion request sent to parent".format(str(self.server_address),
+                                                                                        str(reunion_sender_node)))
+        else:
+            n_nodes = int(body[3:5])
+            if n_nodes == 1:
+                target_ip = body[5:20]
+                target_port = body[20:25]
+                if (target_ip, target_port) == self.server_address:
+                    self.reunion_on_fly = False
+                    self.reunion_timer = 4 * 10
+            else:
+                nodes_address_list = []
+                n_nodes = int(body[3:5])
+                for i in range(1, n_nodes):
+                    nodes_address_list.append((body[5 + 20 * i:20 + 20 * i], body[20 + 20 * i:25 + 20 * i]))
+
+                reunion_response_packet = PacketFactory.new_reunion_packet(type='RES',
+                                                                           source_address=self.server_address,
+                                                                           nodes_array=nodes_address_list)
+                target_ip = body[25:40]
+                target_port = body[40:45]
+                target_address = (target_ip, target_port)
+                self.stream.add_message_to_out_buff(target_address, reunion_response_packet.buf)
+                self.print_function("{} redirected reunion response to {}".format(self.server_address, target_address))
+
     def __handle_join_packet(self, packet):
         """
         When a Join packet received we should add a new node to our nodes array.
@@ -481,6 +554,11 @@ class Peer(threading.Thread):
         :return:
         """
         join_request_source_address = packet.get_source_server_address()
+        if self.right_child_address == join_request_source_address or self.left_child_address == join_request_source_address:
+            self.print_function(
+                "{} received join request from {} but they have been joined before".format(self.server_address,
+                                                                                           join_request_source_address))
+
         if self.right_child_address is None:
             self.right_child_address = join_request_source_address
         elif self.left_child_address is None:
@@ -489,6 +567,8 @@ class Peer(threading.Thread):
             self.print_function(
                 "Client {} received join from {} but has no free room for a new child".format(self.server_address,
                                                                                               join_request_source_address))
+            return
+        self.print_function("{} received join request from {}".format(self.server_address, join_request_source_address))
 
         if not self.is_root:
             self.stream.add_node(join_request_source_address, set_register_connection=False)

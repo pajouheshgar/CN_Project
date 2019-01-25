@@ -237,12 +237,23 @@ class RefreshButton:
 
 def build_root_tree(root_node):
     network_graph = root.peer.graph
+
+    # if graph nodes is list
     for address in nodes:
+        for node in network_graph.nodes:
+            if node.address == address:
+                if node.left_child is not None:
+                    nodes[address].connect_to(nodes[node.left_child.address])
+                if node.right_child is not None:
+                    nodes[address].connect_to(nodes[node.right_child.address])
+
+    # if graph nodes is dictionary
+    """for address in nodes:
         if network_graph.nodes.__contains__(address):
             if network_graph.nodes[address].left_child is not None:
                 nodes[address].connect_to(nodes[network_graph.nodes[address].left_child.address])
             if network_graph.nodes[address].right_child is not None:
-                nodes[address].connect_to(nodes[network_graph.nodes[address].right_child.address])
+                nodes[address].connect_to(nodes[network_graph.nodes[address].right_child.address])"""
     return Tree(root_node)
 
 
